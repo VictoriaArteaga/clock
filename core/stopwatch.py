@@ -1,15 +1,17 @@
 # Contexto del patron State para el cronometro: mide intervalos con precision
 # de centesimas y delega cada operacion al estado actual (Detenido/Corriendo/Pausado).
+# Las vueltas se guardan en una CycleTime (lista circular doblemente enlazada).
 
 from typing import List
 
+from clock.models.cycleTime import CycleTime
 from .stopwatchStates.stoppedState import StoppedState
 from .stopwatchStates.runningState import RunningState
 from .stopwatchStates.pausedState import PausedState
 
 
 class Stopwatch:
-    """Cronometro como Contexto del patron State + registro de vueltas."""
+    """Cronometro como Contexto del patron State + registro de vueltas en CycleTime."""
 
     def __init__(self):
         # Instancias unicas de cada estado (se reutilizan al transicionar).
@@ -23,7 +25,8 @@ class Stopwatch:
         # Datos compartidos que los estados leen y escriben.
         self._startTimestamp: float = 0.0       # marca de perf_counter al arrancar/reanudar.
         self._accumulatedSeconds: float = 0.0   # suma de tramos previos (tras pausas).
-        self._lapTimes: List[int] = []          # tiempos totales (en ms) de cada vuelta.
+        # Tiempos totales (en ms) de cada vuelta, en una lista circular doble.
+        self._lapTimes = CycleTime()
 
     # --- Transiciones de estado ----------------------------------------------
     def setStoppedState(self) -> None:
@@ -41,7 +44,8 @@ class Stopwatch:
 
     @property
     def laps(self) -> List[int]:
-        return list(self._lapTimes)
+        # Snapshot en orden de registro para que la UI lo muestre comodamente.
+        return [node.getTime() for node in self._lapTimes]
 
     # --- Operaciones que delegan al estado actual ----------------------------
     def isRunning(self) -> bool:

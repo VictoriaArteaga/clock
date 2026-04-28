@@ -17,7 +17,8 @@ class RunningState(StopwatchState):
 
     def recordLap(self, stopwatch) -> int:
         elapsedMs = stopwatch.getElapsedMs()
-        stopwatch._lapTimes.append(elapsedMs)
+        # Agregamos al final de la lista circular doble que guarda las vueltas.
+        stopwatch._lapTimes.insertTimeAtEnd(elapsedMs)
         return elapsedMs
 
     def getCurrentElapsed(self, stopwatch) -> float:

@@ -1,9 +1,11 @@
-# Modelo de alarmas: una pequena estructura para describir cada alarma
-# y un manager que decide cuando una alarma debe sonar.
+# Modelo de alarmas: cada alarma es un dato simple y el AlarmManager las
+# almacena en una CycleTime (lista circular doblemente enlazada).
 
 import itertools
 from dataclasses import dataclass
 from typing import List, Optional
+
+from .cycleTime import CycleTime
 
 
 @dataclass
@@ -21,10 +23,11 @@ class Alarm:
 
 
 class AlarmManager:
-    """Mantiene la lista de alarmas y decide cuando alguna debe disparar."""
+    """Mantiene las alarmas guardadas en una CycleTime y decide cuando suenan."""
 
     def __init__(self):
-        self._alarmList: List[Alarm] = []
+        # Lista circular doblemente enlazada de alarmas (cada nodo guarda un Alarm).
+        self._alarmList = CycleTime()
         self._idCounter = itertools.count(1)
         # Memoria del ultimo (hora, minuto) que disparo, para no repetir
         # el sonido 60 veces dentro del mismo minuto.
@@ -32,7 +35,8 @@ class AlarmManager:
 
     @property
     def alarms(self) -> List[Alarm]:
-        return list(self._alarmList)
+        # Snapshot en orden de insercion para que la UI lo recorra comodamente.
+        return [node.getTime() for node in self._alarmList]
 
     def add(self, name: str, hour: int, minute: int, second: int = 0) -> Alarm:
         newAlarm = Alarm(
@@ -40,14 +44,19 @@ class AlarmManager:
             name=name or "Alarma",
             hour=hour, minute=minute, second=second,
         )
-        self._alarmList.append(newAlarm)
+        # Las alarmas se agregan al final para conservar el orden de creacion.
+        self._alarmList.insertTimeAtEnd(newAlarm)
         return newAlarm
 
     def remove(self, alarmId: int) -> None:
-        self._alarmList = [a for a in self._alarmList if a.alarmId != alarmId]
+        for node in self._alarmList:
+            if node.getTime().alarmId == alarmId:
+                self._alarmList.removeTime(node)
+                return
 
     def toggle(self, alarmId: int) -> None:
-        for alarm in self._alarmList:
+        for node in self._alarmList:
+            alarm = node.getTime()
             if alarm.alarmId == alarmId:
                 alarm.isActive = not alarm.isActive
                 return
@@ -57,7 +66,8 @@ class AlarmManager:
         currentHour, currentMinute, _unusedSecond = currentTime
         totalMinutes = (currentHour * 60 + currentMinute + minutesAhead) % (24 * 60)
         newHour, newMinute = divmod(totalMinutes, 60)
-        for alarm in self._alarmList:
+        for node in self._alarmList:
+            alarm = node.getTime()
             if alarm.alarmId == alarmId:
                 alarm.hour = newHour
                 alarm.minute = newMinute
@@ -79,7 +89,8 @@ class AlarmManager:
         currentMinuteKey = (currentHour, currentMinute)
         if currentMinuteKey == self._lastFiredMinute:
             return None
-        for alarm in self._alarmList:
+        for node in self._alarmList:
+            alarm = node.getTime()
             if alarm.isActive and alarm.hour == currentHour and alarm.minute == currentMinute:
                 self._lastFiredMinute = currentMinuteKey
                 # Modo one-shot: la alarma queda desactivada tras sonar.
