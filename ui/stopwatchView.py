@@ -2,7 +2,7 @@
 
 import customtkinter as ctk
 
-from clock.models.stopwatch import Stopwatch
+from clock.core.stopwatch import Stopwatch
 from clock.ui.iconRenderer import IconRenderer
 
 

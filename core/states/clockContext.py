@@ -27,10 +27,8 @@ class ClockContext:
         self._currentState = self._pausedState
 
     def togglePause(self) -> None:
-        if self.isRunning():
-            self.setPausedState()
-        else:
-            self.setRunningState()
+        # Sin if/else: cada estado sabe a cual transicionar al togglearse.
+        self._currentState.handleToggle(self)
 
     def update(self) -> None:
         # El patron State decide si avanzar o no el motor.
